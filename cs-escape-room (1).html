@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CODE://LOCKED — CS Escape Room</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#080c14;--bg2:#0d1824;--bg3:#121f30;
+  --text:#b8d0e8;--dim:#506070;
+  --accent:#00c896;--accent-d:#007a5a;
+  --blue:#4ab8f0;--red:#ff4d6a;--amber:#ffaa00;
+  --border:rgba(0,200,150,0.18);
+}
+body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;min-height:100vh}
+#hdr{background:var(--bg2);border-bottom:1px solid var(--border);padding:10px 24px;
+  display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+#site-title{font-size:15px;color:var(--accent);letter-spacing:3px;font-weight:bold}
+#timer{font-size:30px;font-weight:bold;color:var(--accent);letter-spacing:5px;transition:color .3s;font-variant-numeric:tabular-nums}
+#timer.warn{color:var(--amber)}
+#timer.danger{color:var(--red);animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.45}}
+#rc{font-size:12px;color:var(--dim);letter-spacing:1px}
+#pgbar{display:flex;gap:5px;padding:9px 24px;background:var(--bg2);border-bottom:1px solid var(--border)}
+.pd{flex:1;height:5px;border-radius:3px;background:var(--bg3);border:1px solid var(--border);transition:background .4s}
+.pd.active{background:var(--accent-d)}.pd.done{background:var(--accent)}
+#main{max-width:720px;margin:0 auto;padding:28px 18px}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;animation:fadeUp .4s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.card-hdr{background:var(--bg3);padding:13px 20px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.badge{background:rgba(0,200,150,.12);color:var(--accent);font-size:10px;padding:3px 8px;
+  border-radius:3px;letter-spacing:1px;border:1px solid var(--accent-d)}
+.card-title{font-size:16px;color:var(--blue);font-weight:bold;letter-spacing:1px}
+.ctag{margin-left:auto;font-size:11px;color:var(--dim);background:var(--bg);padding:3px 8px;
+  border-radius:3px;border:1px solid rgba(80,96,112,.35)}
+.card-body{padding:20px}
+.lbl{font-size:10px;color:var(--dim);letter-spacing:2px;margin-bottom:7px}
+.mission{font-size:14px;line-height:1.8;color:var(--text);margin-bottom:14px}
+pre{background:#050a10;border:1px solid rgba(74,184,240,.18);border-radius:6px;
+  padding:13px 16px;margin:12px 0;font-size:13px;line-height:1.9;color:#7ec8e3;
+  white-space:pre;overflow-x:auto}
+.kw{color:#c792ea}.num{color:#f78c6c}.var{color:#ffcb6b}.op{color:#89ddff}
+.cm{color:#445566}.str{color:#c3e88d}.fn{color:#82aaff}
+.bug{color:#ff4d6a;background:rgba(255,77,106,.2);border-radius:2px;padding:0 2px}
+.input-row{display:flex;gap:10px;margin-top:18px;align-items:center;flex-wrap:wrap}
+.input-lbl{font-size:11px;color:var(--dim);letter-spacing:1px;white-space:nowrap}
+.ans{flex:1;min-width:100px;background:var(--bg);border:1px solid rgba(0,200,150,.3);
+  border-radius:4px;padding:10px 14px;color:var(--accent);
+  font-family:'Courier New',monospace;font-size:15px;letter-spacing:1px;
+  outline:none;transition:border-color .2s}
+.ans:focus{border-color:var(--accent)}.ans.shake{animation:shk .4s}
+@keyframes shk{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+.sub{background:transparent;border:1px solid var(--accent);color:var(--accent);
+  font-family:'Courier New',monospace;font-size:12px;padding:10px 18px;
+  border-radius:4px;cursor:pointer;letter-spacing:2px;transition:.2s;white-space:nowrap}
+.sub:hover{background:var(--accent);color:var(--bg)}.sub:disabled{opacity:.4;cursor:default}
+.fb{margin-top:11px;font-size:13px;padding:8px 12px;border-radius:4px;display:none}
+.fb.ok{display:block;color:var(--accent);background:rgba(0,200,150,.1);border:1px solid rgba(0,200,150,.3)}
+.fb.err{display:block;color:var(--red);background:rgba(255,77,106,.1);border:1px solid rgba(255,77,106,.3)}
+.hint{margin-top:13px;font-size:13px;color:var(--amber);background:rgba(255,170,0,.08);
+  border:1px solid rgba(255,170,0,.25);border-radius:4px;padding:10px 14px;display:none;line-height:1.7}
+.hint.show{display:block}
+.flow-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0}
+.fstep{background:var(--bg3);border:1px solid var(--border);border-radius:5px;
+  padding:9px 12px;font-size:13px;line-height:1.55;display:flex;gap:9px;align-items:flex-start}
+.fstep-lbl{color:var(--accent);font-weight:bold;min-width:16px;margin-top:1px}
+.scram-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.scram-item{background:var(--bg3);border:1px solid rgba(74,184,240,.25);border-radius:5px;padding:12px 10px;text-align:center}
+.scram-num{font-size:10px;color:var(--dim);letter-spacing:1px;margin-bottom:6px}
+.scram-word{font-size:13px;color:var(--blue);letter-spacing:3px;font-weight:bold;word-break:break-all}
+.clue-list{margin:10px 0;display:flex;flex-direction:column;gap:6px}
+.clue{display:flex;gap:10px;font-size:13px;line-height:1.6;background:var(--bg3);
+  border-radius:4px;padding:8px 12px;border:1px solid var(--border)}
+.cnum{color:var(--accent);font-weight:bold;min-width:20px}
+.logic-table{width:100%;border-collapse:collapse;margin:14px 0;font-size:12px}
+.logic-table th{background:var(--bg3);color:var(--dim);padding:7px 10px;text-align:left;
+  border:1px solid rgba(80,96,112,.3);letter-spacing:1px;font-size:11px}
+.logic-table td{padding:7px 10px;border:1px solid rgba(80,96,112,.3);color:var(--text)}
+.logic-table tr:nth-child(even) td{background:rgba(13,24,36,.6)}
+.no{color:var(--red)}
+#win{display:none;text-align:center;padding:50px 20px;animation:fadeUp .6s ease}
+.win-title{font-size:36px;color:var(--accent);letter-spacing:4px;font-weight:bold;margin-bottom:10px}
+.win-sub{font-size:14px;color:var(--dim);margin-bottom:24px}
+.time-badge{display:inline-block;background:rgba(0,200,150,.12);border:1px solid var(--accent-d);
+  border-radius:6px;padding:14px 28px;font-size:22px;color:var(--accent);letter-spacing:3px;margin-bottom:24px}
+.rooms-done{text-align:left;max-width:480px;margin:0 auto 24px}
+.rooms-done h3{font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:10px}
+.ritem{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(80,96,112,.2);font-size:13px}
+.ck{color:var(--accent)}
+#over{display:none;text-align:center;padding:50px 20px}
+.over-title{font-size:36px;color:var(--red);letter-spacing:4px;font-weight:bold;margin-bottom:10px}
+#intro{text-align:center;padding:44px 20px;animation:fadeUp .5s ease}
+.intro-title{font-size:34px;color:var(--accent);letter-spacing:4px;font-weight:bold;margin-bottom:8px}
+.intro-sub{font-size:14px;color:var(--dim);margin-bottom:26px;line-height:1.85}
+.intro-rules{text-align:left;max-width:480px;margin:0 auto 26px}
+.intro-rules h3{font-size:11px;color:var(--dim);letter-spacing:2px;margin-bottom:12px}
+.rule{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid rgba(80,96,112,.2);font-size:13px;line-height:1.55}
+.rn{color:var(--accent);min-width:22px;font-weight:bold}
+.start-btn{background:var(--accent-d);border:1px solid var(--accent);color:var(--accent);
+  font-family:'Courier New',monospace;font-size:14px;padding:14px 36px;
+  border-radius:4px;cursor:pointer;letter-spacing:3px;transition:.2s}
+.start-btn:hover{background:var(--accent);color:var(--bg)}
+.rbtn{background:transparent;border:1px solid var(--dim);color:var(--dim);
+  font-family:'Courier New',monospace;font-size:12px;padding:10px 22px;
+  border-radius:4px;cursor:pointer;letter-spacing:2px;transition:.2s;margin-top:8px}
+.rbtn:hover{border-color:var(--text);color:var(--text)}
+</style>
+</head>
+<body>
+
+<div id="hdr">
+  <div id="site-title">CODE://LOCKED</div>
+  <div id="timer">40:00</div>
+  <div id="rc">ROOM — / 10</div>
+</div>
+<div id="pgbar"></div>
+
+<div id="main">
+
+<div id="intro">
+  <div class="intro-title">CODE://LOCKED</div>
+  <p class="intro-sub">A digital vault has been sealed by an unknown force.<br>Your team must crack 10 challenges before the clock hits zero.</p>
+  <div class="intro-rules">
+    <h3>// MISSION PARAMETERS</h3>
+    <div class="rule"><span class="rn">01</span><span>You have <strong style="color:var(--accent)">40 minutes</strong>. The clock starts when you press BEGIN.</span></div>
+    <div class="rule"><span class="rn">02</span><span>Rooms unlock in sequence — complete each to move forward.</span></div>
+    <div class="rule"><span class="rn">03</span><span>After <strong style="color:var(--amber)">2 wrong answers</strong>, a hint unlocks automatically.</span></div>
+    <div class="rule"><span class="rn">04</span><span>Talk through your reasoning as a team before submitting.</span></div>
+    <div class="rule"><span class="rn">05</span><span>10 rooms: Binary · Loops · Boolean Logic · Debug · Decomposition · JS Debug · Python Debug · Flowchart · CT Pillars · Logic Puzzle</span></div>
+  </div>
+  <button class="start-btn" onclick="startGame()">[ BEGIN MISSION ]</button>
+</div>
+
+<div id="puz" style="display:none"></div>
+
+<div id="win">
+  <div class="win-title">SYSTEM UNLOCKED</div>
+  <p class="win-sub">Outstanding — your team escaped the digital vault!</p>
+  <div class="time-badge" id="trem">Time remaining: --:--</div>
+  <div class="rooms-done">
+    <h3>// ALL 10 ROOMS CLEARED</h3>
+    <div class="ritem"><span class="ck">✓</span> Room 1 — The Binary Vault</div>
+    <div class="ritem"><span class="ck">✓</span> Room 2 — The Algorithm Maze</div>
+    <div class="ritem"><span class="ck">✓</span> Room 3 — The Logic Gate Lab</div>
+    <div class="ritem"><span class="ck">✓</span> Room 4 — The Bug Chamber</div>
+    <div class="ritem"><span class="ck">✓</span> Room 5 — The Final Cipher</div>
+    <div class="ritem"><span class="ck">✓</span> Room 6 — The JavaScript Reactor</div>
+    <div class="ritem"><span class="ck">✓</span> Room 7 — The Python Lab</div>
+    <div class="ritem"><span class="ck">✓</span> Room 8 — The Flowchart Kitchen</div>
+    <div class="ritem"><span class="ck">✓</span> Room 9 — The Pillar Vault</div>
+    <div class="ritem"><span class="ck">✓</span> Room 10 — The Master Lock</div>
+  </div>
+  <button class="rbtn" onclick="restart()">[ PLAY AGAIN ]</button>
+</div>
+
+<div id="over">
+  <div class="over-title">TIME EXPIRED</div>
+  <p style="font-size:14px;color:var(--dim);margin-bottom:24px">The vault remains sealed. You were so close — try again!</p>
+  <button class="rbtn" onclick="restart()">[ TRY AGAIN ]</button>
+</div>
+
+</div>
+
+<script>
+const PUZZLES = [
+  {
+    room:1,title:"The Binary Vault",concept:"Number Systems",
+    mission:"A security lock will only open with a specific decimal number — but the only clue is written in binary. Decode it to unlock the vault.",
+    body:`<div class="lbl">// DECODE THIS VALUE</div>
+<div style="text-align:center;padding:22px 0">
+  <span style="font-size:36px;color:#7ec8e3;letter-spacing:12px;font-weight:bold">1010</span>
+</div>
+<p class="mission" style="margin-bottom:0">What is <strong style="color:var(--blue)">1010</strong> in decimal (base 10)?</p>`,
+    hint:"Each bit position right-to-left is a power of 2: positions 1, 2, 4, 8 ... Only count positions that show a '1'. Which two positions have a 1?",
+    ans:"10",lbl:"ENTER DECIMAL CODE"
+  },
+  {
+    room:2,title:"The Algorithm Maze",concept:"Loops & Tracing",
+    mission:"A door will only open if you correctly predict what this algorithm outputs. Trace every single iteration — do not guess.",
+    body:`<div class="lbl">// TRACE THIS ALGORITHM</div>
+<pre><span class="var">counter</span> <span class="op">=</span> <span class="num">0</span>
+<span class="kw">REPEAT</span> <span class="num">4</span> <span class="kw">TIMES</span>:
+    <span class="var">counter</span> <span class="op">=</span> <span class="var">counter</span> <span class="op">+</span> <span class="num">3</span>
+<span class="kw">OUTPUT</span> <span class="var">counter</span></pre>
+<p class="mission" style="margin-bottom:0">What number does this algorithm <strong style="color:var(--blue)">OUTPUT</strong>?</p>`,
+    hint:"Trace each loop: Loop 1 → counter = 3. Loop 2 → counter = 6. Loop 3 → counter = 9. Loop 4 → counter = ?",
+    ans:"12",lbl:"ENTER OUTPUT VALUE"
+  },
+  {
+    room:3,title:"The Logic Gate Lab",concept:"Boolean Logic",
+    mission:"The defense system runs on boolean logic. Evaluate this expression precisely — one incorrect truth value and the system stays locked.",
+    body:`<div class="lbl">// EVALUATE THE EXPRESSION</div>
+<pre><span class="var">A</span> <span class="op">=</span> <span class="kw">TRUE</span>
+<span class="var">B</span> <span class="op">=</span> <span class="kw">FALSE</span>
+
+<span class="cm">// Evaluate this expression:</span>
+(<span class="kw">NOT</span> <span class="var">A</span>) <span class="kw">OR</span> (<span class="var">A</span> <span class="kw">AND</span> <span class="var">B</span>)</pre>
+<p class="mission" style="margin-bottom:0">Type <strong style="color:var(--blue)">TRUE</strong> or <strong style="color:var(--blue)">FALSE</strong>.</p>`,
+    hint:"Two parts: (NOT A) = NOT TRUE = FALSE. (A AND B) = TRUE AND FALSE = FALSE. Now evaluate: FALSE OR FALSE = ?",
+    ans:"false",lbl:"ENTER TRUE OR FALSE"
+  },
+  {
+    room:4,title:"The Bug Chamber",concept:"Debugging & Tracing",
+    mission:"Predict the exact output of this program to gain access. Be precise — the answer may surprise you.",
+    body:`<div class="lbl">// TRACE AND PREDICT OUTPUT</div>
+<pre><span class="var">total</span> <span class="op">=</span> <span class="num">10</span>
+<span class="kw">FOR</span> <span class="var">i</span> <span class="op">=</span> <span class="num">1</span> <span class="kw">TO</span> <span class="num">5</span>:
+    <span class="var">total</span> <span class="op">=</span> <span class="var">total</span> <span class="op">-</span> <span class="var">i</span>
+<span class="kw">OUTPUT</span> <span class="var">total</span></pre>
+<p class="mission" style="margin-bottom:0">What does this code <strong style="color:var(--blue)">OUTPUT</strong>? (The answer may be negative.)</p>`,
+    hint:"Trace step by step: total=10. i=1 → total=9. i=2 → total=7. i=3 → total=4. i=4 → total=0. i=5 → total=?",
+    ans:"-5",lbl:"ENTER OUTPUT VALUE"
+  },
+  {
+    room:5,title:"The Final Cipher",concept:"Decomposition",
+    mission:"The master lock uses a multi-step algorithm. Solve each step in exact order — one mistake cascades into a wrong final answer.",
+    body:`<div class="lbl">// EXECUTE ALL THREE STEPS IN ORDER</div>
+<pre><span class="var">myList</span> <span class="op">=</span> [<span class="num">8</span>, <span class="num">3</span>, <span class="num">5</span>, <span class="num">12</span>, <span class="num">1</span>, <span class="num">7</span>]
+
+<span class="cm">// Step 1: Remove all numbers LESS THAN 5</span>
+<span class="cm">// Step 2: Sort remaining numbers smallest → largest</span>
+<span class="cm">// Step 3: Output the SECOND number in the sorted list</span></pre>
+<p class="mission" style="margin-bottom:0">Follow all three steps in order. What is the final <strong style="color:var(--blue)">OUTPUT</strong>?</p>`,
+    hint:"Step 1 survivors: 8, 5, 12, 7 (3 and 1 are less than 5 — remove them). Step 2: sort those four numbers. Step 3: what is at position 2?",
+    ans:"7",lbl:"ENTER FINAL OUTPUT"
+  },
+  {
+    room:6,title:"The JavaScript Reactor",concept:"Debugging — JavaScript",
+    mission:"A countdown timer was written for the reactor, but it has a critical bug — it counts UP instead of DOWN. Identify the single broken character on the highlighted line to shut it down before it overheats.",
+    body:`<div class="lbl">// BUGGY JAVASCRIPT TIMER — FIND THE ERROR</div>
+<pre><span class="var">let</span> seconds <span class="op">=</span> <span class="num">60</span>;
+
+<span class="kw">function</span> <span class="fn">tick</span>() {
+    seconds <span class="op">=</span> seconds <span class="bug">+</span> <span class="num">1</span>;  <span class="cm">// &lt;-- BUG IS ON THIS LINE</span>
+    document.<span class="fn">getElementById</span>(<span class="str">"display"</span>)
+            .textContent <span class="op">=</span> seconds;
+}
+
+<span class="fn">setInterval</span>(tick, <span class="num">1000</span>);
+</pre>
+<p class="mission" style="margin-bottom:0">The timer counts <em>up</em> instead of <em>down</em>. What single character highlighted in red must be changed to fix it? Type only that one character.</p>`,
+    hint:"A countdown timer must decrease the number of seconds each tick, not increase it. What math operator makes a number get smaller?",
+    ans:"-",lbl:"ENTER THE CORRECT CHARACTER"
+  },
+  {
+    room:7,title:"The Python Lab",concept:"Debugging — Python 3",
+    mission:"A coin-flipping simulation is crashing immediately with a SyntaxError and will never produce results. Identify the broken operator on the highlighted line to restore the program.",
+    body:`<div class="lbl">// BUGGY PYTHON 3 — FIND THE SYNTAX ERROR</div>
+<pre><span class="kw">import</span> random
+
+<span class="kw">def</span> <span class="fn">flip_coin</span>():
+    result <span class="op">=</span> random.<span class="fn">randint</span>(<span class="num">0</span>, <span class="num">1</span>)
+    <span class="kw">if</span> result <span class="bug">=</span> <span class="num">0</span>:   <span class="cm"># &lt;-- SyntaxError HERE</span>
+        <span class="kw">return</span> <span class="str">"Heads"</span>
+    <span class="kw">else</span>:
+        <span class="kw">return</span> <span class="str">"Tails"</span>
+
+<span class="fn">print</span>(<span class="fn">flip_coin</span>())
+</pre>
+<p class="mission" style="margin-bottom:0">Python crashes on the highlighted line. What should the operator be <em>instead</em> of a single <code style="color:var(--red);font-size:14px">=</code> ? Type the correct operator.</p>`,
+    hint:"In Python, a single = is ASSIGNMENT — it stores a value. To CHECK if two values are equal inside an if-statement, you need a double symbol. What is it?",
+    ans:"==",lbl:"ENTER THE CORRECT OPERATOR"
+  },
+  {
+    room:8,title:"The Flowchart Kitchen",concept:"Algorithm Sequencing",
+    mission:"The vault's baking subsystem is scrambled. The steps for chocolate chip cookies are completely out of order. Arrange them into the correct logical sequence to restore the system.",
+    body:`<div class="lbl">// SCRAMBLED STEPS — PUT THEM IN CORRECT ORDER</div>
+<div class="flow-grid">
+  <div class="fstep"><span class="fstep-lbl">A</span><span>Bake cookies for 9–11 minutes at 375°F</span></div>
+  <div class="fstep"><span class="fstep-lbl">B</span><span>Mix butter and sugar together until fluffy</span></div>
+  <div class="fstep"><span class="fstep-lbl">C</span><span>Add flour, baking soda, and salt — mix well</span></div>
+  <div class="fstep"><span class="fstep-lbl">D</span><span>Preheat the oven to 375°F</span></div>
+  <div class="fstep"><span class="fstep-lbl">E</span><span>Fold in the chocolate chips</span></div>
+  <div class="fstep"><span class="fstep-lbl">F</span><span>Add eggs and vanilla extract — stir well</span></div>
+</div>
+<p class="mission" style="margin-bottom:0">Type the 6 letters in the correct order with no spaces or commas.<br><span style="font-size:12px;color:var(--dim)">Example format: ABCDEF</span></p>`,
+    hint:"What MUST happen first before anything else can work? Then think: what has to come before adding eggs? Before adding chips? Before baking?",
+    ans:"dbfcea",lbl:"ENTER CORRECT SEQUENCE"
+  },
+  {
+    room:9,title:"The Pillar Vault",concept:"Computational Thinking",
+    mission:"The four pillars of Computational Thinking have been scrambled by the vault's encryption engine. Unscramble all four and type them — separated by commas — to restore the CT framework.",
+    body:`<div class="lbl">// UNSCRAMBLE THE FOUR PILLARS</div>
+<div class="scram-grid">
+  <div class="scram-item">
+    <div class="scram-num">PILLAR 1</div>
+    <div class="scram-word">OOEDINCPOMSTI</div>
+  </div>
+  <div class="scram-item">
+    <div class="scram-num">PILLAR 2</div>
+    <div class="scram-word">TARPENT RCGNTIONIEO</div>
+  </div>
+  <div class="scram-item">
+    <div class="scram-num">PILLAR 3</div>
+    <div class="scram-word">CATANISRTOB</div>
+  </div>
+  <div class="scram-item">
+    <div class="scram-num">PILLAR 4</div>
+    <div class="scram-word">LARMTSOGHI</div>
+  </div>
+</div>
+<p class="mission" style="margin-bottom:0">Type all four unscrambled words separated by <strong style="color:var(--blue)">commas</strong>. Order does not matter.<br><span style="font-size:12px;color:var(--dim)">Example: word one, word two, word three, word four</span></p>`,
+    hint:"Pillar 1 = breaking a big problem into smaller parts. Pillar 2 = spotting trends and similarities. Pillar 3 = focusing only on important details, ignoring the rest. Pillar 4 = a step-by-step set of instructions.",
+    multiAns:["decomposition","pattern recognition","abstraction","algorithms"],
+    ans:"decomposition,pattern recognition,abstraction,algorithms",lbl:"ENTER ALL FOUR PILLARS"
+  },
+  {
+    room:10,title:"The Master Lock",concept:"Deductive Logic Reasoning",
+    mission:"The final lock can only be opened with one specific answer — found through careful deductive reasoning. Read every clue. Use the elimination table. Conclude.",
+    body:`<div class="lbl">// MASTER LOCK — LOGIC PUZZLE</div>
+<p class="mission">Four CS students each have a <em>different</em> favorite programming concept: <strong style="color:var(--blue)">Loops</strong>, <strong style="color:var(--blue)">Variables</strong>, <strong style="color:var(--blue)">Functions</strong>, and <strong style="color:var(--blue)">Arrays</strong>. Use the clues below to determine each student's favorite.</p>
+<div class="clue-list">
+  <div class="clue"><span class="cnum">1</span><span>Ava's favorite is NOT Loops and NOT Arrays.</span></div>
+  <div class="clue"><span class="cnum">2</span><span>Ben's favorite concept begins with the letter <strong style="color:var(--accent)">F</strong>.</span></div>
+  <div class="clue"><span class="cnum">3</span><span>Carlos does NOT prefer Variables.</span></div>
+  <div class="clue"><span class="cnum">4</span><span>Dani's favorite is NOT Functions.</span></div>
+  <div class="clue"><span class="cnum">5</span><span>Carlos's favorite concept has <strong style="color:var(--accent)">more than 5 letters</strong> in its name.</span></div>
+</div>
+<table class="logic-table">
+  <tr><th>STUDENT</th><th>LOOPS (5)</th><th>VARIABLES (9)</th><th>FUNCTIONS (9)</th><th>ARRAYS (6)</th></tr>
+  <tr><td>Ava</td><td class="no">✗</td><td></td><td></td><td class="no">✗</td></tr>
+  <tr><td>Ben</td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>Carlos</td><td></td><td class="no">✗</td><td></td><td></td></tr>
+  <tr><td>Dani</td><td></td><td></td><td class="no">✗</td><td></td></tr>
+</table>
+<p class="mission" style="margin-bottom:0">What is <strong style="color:var(--blue)">Dani's</strong> favorite CS concept?</p>`,
+    hint:"Start with Clue 2 — it gives you Ben's answer directly (F___). Then Clue 1 eliminates two options for Ava — only one remains. Clue 3 + Clue 5 together decide Carlos. Whatever concept is left must be Dani's.",
+    ans:"loops",lbl:"ENTER DANI'S FAVORITE"
+  }
+];
+
+let sLeft=40*60,interval=null,cur=0,wrong=0,active=false;
+
+(function(){
+  const bar=document.getElementById('pgbar');
+  for(let i=1;i<=10;i++){
+    const d=document.createElement('div');
+    d.className='pd';d.id='pd'+i;bar.appendChild(d);
+  }
+})();
+
+function fmt(s){return`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`}
+
+function startGame(){
+  document.getElementById('intro').style.display='none';
+  document.getElementById('puz').style.display='block';
+  active=true;renderPuzzle(0);
+  interval=setInterval(tick,1000);
+}
+
+function tick(){
+  if(!active)return;
+  sLeft--;
+  const t=document.getElementById('timer');
+  t.textContent=fmt(sLeft);
+  if(sLeft<=300&&sLeft>120)t.className='warn';
+  else if(sLeft<=120)t.className='danger';
+  if(sLeft<=0){clearInterval(interval);gameOver();}
+}
+
+function prog(i){
+  for(let x=1;x<=10;x++){
+    const d=document.getElementById('pd'+x);
+    d.className=x<i+1?'pd done':x===i+1?'pd active':'pd';
+  }
+  document.getElementById('rc').textContent=`ROOM ${Math.min(i+1,10)} / 10`;
+}
+
+function renderPuzzle(i){
+  wrong=0;
+  const p=PUZZLES[i];
+  document.getElementById('puz').innerHTML=`
+    <div class="card">
+      <div class="card-hdr">
+        <span class="badge">ROOM ${p.room}</span>
+        <span class="card-title">${p.title}</span>
+        <span class="ctag">${p.concept}</span>
+      </div>
+      <div class="card-body">
+        <div class="lbl">// MISSION BRIEFING</div>
+        <p class="mission">${p.mission}</p>
+        ${p.body}
+        <div class="input-row">
+          <span class="input-lbl">${p.lbl} &gt;</span>
+          <input class="ans" id="ai" type="text" placeholder="..." autocomplete="off"
+            onkeydown="if(event.key==='Enter')check()">
+          <button class="sub" id="sb" onclick="check()">SUBMIT</button>
+        </div>
+        <div class="fb" id="fb"></div>
+        <div class="hint" id="ht">${p.hint}</div>
+      </div>
+    </div>`;
+  document.getElementById('ai').focus();
+  prog(i);
+}
+
+function norm(s){return s.trim().toLowerCase().replace(/\s+/g,' ')}
+
+function checkMulti(val,required){
+  const parts=val.split(',').map(norm).filter(s=>s.length>0);
+  return required.every(r=>parts.some(p=>p===r));
+}
+
+function check(){
+  if(!active)return;
+  const input=document.getElementById('ai');
+  const fb=document.getElementById('fb');
+  const ht=document.getElementById('ht');
+  const p=PUZZLES[cur];
+  const val=input.value;
+  let correct=p.multiAns?checkMulti(val,p.multiAns):(norm(val)===norm(p.ans));
+
+  if(correct){
+    fb.className='fb ok';fb.textContent='✓  ACCESS GRANTED — unlocking next room...';
+    input.disabled=true;
+    document.getElementById('sb').disabled=true;
+    document.getElementById('pd'+(cur+1)).className='pd done';
+    setTimeout(()=>{cur++;cur>=PUZZLES.length?winGame():renderPuzzle(cur);},1400);
+  } else {
+    wrong++;
+    input.className='ans shake';
+    fb.className='fb err';fb.textContent='✗  ACCESS DENIED — incorrect. Try again.';
+    setTimeout(()=>{input.className='ans';input.value='';input.focus();},420);
+    if(wrong>=2)ht.className='hint show';
+  }
+}
+
+function winGame(){
+  active=false;clearInterval(interval);
+  for(let x=1;x<=10;x++)document.getElementById('pd'+x).className='pd done';
+  document.getElementById('puz').style.display='none';
+  document.getElementById('win').style.display='block';
+  document.getElementById('trem').textContent=`Time remaining: ${fmt(sLeft)}`;
+  document.getElementById('rc').textContent='COMPLETE';
+}
+
+function gameOver(){
+  active=false;
+  document.getElementById('puz').style.display='none';
+  document.getElementById('over').style.display='block';
+}
+
+function restart(){
+  sLeft=40*60;cur=0;wrong=0;active=false;clearInterval(interval);
+  document.getElementById('timer').textContent='40:00';
+  document.getElementById('timer').className='';
+  document.getElementById('win').style.display='none';
+  document.getElementById('over').style.display='none';
+  document.getElementById('intro').style.display='block';
+  document.getElementById('puz').style.display='none';
+  for(let x=1;x<=10;x++)document.getElementById('pd'+x).className='pd';
+  document.getElementById('rc').textContent='ROOM — / 10';
+}
+</script>
+</body>
+</html>
